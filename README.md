@@ -40,6 +40,6 @@ Este proyecto utiliza una arquitectura de microservicios desacoplada, separando 
 El corazón de este proyecto son los datos, obtenidos de una fuente pública en Kaggle.
 
 * **Nombre del Dataset**: Elden Ring Ultimate Dataset
-* **Fuente**: Kaggle
+* **Fuente**: Kaggle:
 * **Enlace**: [https://www.kaggle.com/datasets/robikscube/elden-ring-ultimate-dataset](https://www.kaggle.com/datasets/robikscube/elden-ring-ultimate-dataset)
 * **Descripción**: El dataset consta de **15 archivos CSV** que contienen información detallada de armas, armaduras, jefes, encantamientos, hechizos y clases, permitiendo un análisis profundo de las estadísticas y relaciones del juego.
