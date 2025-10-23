@@ -22,11 +22,11 @@ class MongoDB:
         """
         try:
             if cls.client is None:
-                logger.info(f"🔌 Conectando a MongoDB: {settings.DATABASE_NAME}")
+                logger.info(f"Conectando a MongoDB: {settings.DATABASE_NAME}")
                 
                 cls.client = MongoClient(
                     settings.MONGO_URI,
-                    serverSelectionTimeoutMS=10000,  # Timeout de 10 segundos (Atlas puede tardar más)
+                    serverSelectionTimeoutMS=5000,  # Timeout de 5 segundos (Atlas puede tardar más) - cambiar a 10000 en producción si es necesario
                     connectTimeoutMS=20000,
                     socketTimeoutMS=20000,
                     maxPoolSize=50,

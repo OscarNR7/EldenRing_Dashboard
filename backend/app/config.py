@@ -3,9 +3,13 @@ from typing import List
 from pydantic_settings import BaseSettings
 from pydantic import Field
 from dotenv import load_dotenv
+import logging
 
 # Cargar variables de entorno
 load_dotenv()
+
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 class Settings(BaseSettings):
     """
@@ -79,8 +83,5 @@ settings = Settings()
 
 # Log de configuración inicial (solo en desarrollo)
 if settings.is_development:
-    print(f"Configuración cargada:")
-    print(f"   - Base de datos: {settings.DATABASE_NAME}")
-    print(f"   - Puerto: {settings.PORT}")
-    print(f"   - Entorno: {settings.ENVIRONMENT}")
-    print(f"   - CORS Origins: {settings.get_cors_origins()}")
+    logger = logging.getLogger(__name__)
+    logger.info(f"Configuración cargada: {settings.DATABASE_NAME}")
