@@ -56,6 +56,153 @@ class BaseService(Generic[T]):
             )
         return ObjectId(item_id)
     
+    def _normalize_document(self, document: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Normaliza un documento de MongoDB antes de convertirlo a modelo Pydantic.
+        - Convierte ObjectId a string
+        - Parsea campos JSON guardados como strings
+        - Transforma listas de diccionarios al formato esperado por los modelos
+        
+        Args:
+            document: Documento de MongoDB
+            
+        Returns:
+            Documento normalizado
+        """
+        import json
+        import ast
+        
+        if "_id" in document and isinstance(document["_id"], ObjectId):
+            document["_id"] = str(document["_id"])
+        
+        # Parsear campos que pueden estar como strings
+        string_fields = ["attack", "defence", "scalesWith", "requiredAttributes", "dmgNegation", "resistance", "drops"]
+        
+        for field in string_fields:
+            if field in document and isinstance(document[field], str):
+                try:
+                    # Intentar parsear como Python literal (para listas con comillas simples)
+                    document[field] = ast.literal_eval(document[field])
+                except (ValueError, SyntaxError):
+                    try:
+                        # Intentar parsear como JSON
+                        document[field] = json.loads(document[field])
+                    except (json.JSONDecodeError, TypeError):
+                        pass
+        
+        # Transformar 'attack' de lista a objeto AttackStats
+        if "attack" in document and isinstance(document["attack"], list):
+            attack_dict = {}
+            for item in document["attack"]:
+                if isinstance(item, dict) and "name" in item and "amount" in item:
+                    name_map = {
+                        "Phy": "physical",
+                        "Mag": "magic",
+                        "Fire": "fire",
+                        "Ligt": "lightning",
+                        "Holy": "holy",
+                        "Crit": "critical"
+                    }
+                    mapped_name = name_map.get(item["name"], item["name"].lower())
+                    attack_dict[mapped_name] = item["amount"]
+            document["attack"] = attack_dict if attack_dict else None
+        
+        # Transformar 'defence' de lista a diccionario simple
+        if "defence" in document and isinstance(document["defence"], list):
+            defence_dict = {}
+            for item in document["defence"]:
+                if isinstance(item, dict) and "name" in item and "amount" in item:
+                    name_map = {
+                        "Phy": "physical",
+                        "Mag": "magic",
+                        "Fire": "fire",
+                        "Ligt": "lightning",
+                        "Holy": "holy",
+                        "Boost": "boost"
+                    }
+                    mapped_name = name_map.get(item["name"], item["name"].lower())
+                    defence_dict[mapped_name] = item["amount"]
+            document["defence"] = defence_dict if defence_dict else None
+        
+        # Transformar 'scalesWith' de lista a objeto ScalingStats
+        if "scalesWith" in document and isinstance(document["scalesWith"], list):
+            scaling_dict = {}
+            for item in document["scalesWith"]:
+                if isinstance(item, dict) and "name" in item and "scaling" in item:
+                    name_map = {
+                        "Str": "strength",
+                        "Dex": "dexterity",
+                        "Int": "intelligence",
+                        "Fai": "faith",
+                        "Arc": "arcane"
+                    }
+                    mapped_name = name_map.get(item["name"], item["name"].lower())
+                    scaling_dict[mapped_name] = item["scaling"]
+            document["scalesWith"] = scaling_dict if scaling_dict else None
+        
+        # Transformar 'requiredAttributes' de lista a objeto RequirementStats
+        if "requiredAttributes" in document and isinstance(document["requiredAttributes"], list):
+            req_dict = {}
+            for item in document["requiredAttributes"]:
+                if isinstance(item, dict) and "name" in item and "amount" in item:
+                    name_map = {
+                        "Str": "strength",
+                        "Dex": "dexterity",
+                        "Int": "intelligence",
+                        "Fai": "faith",
+                        "Arc": "arcane"
+                    }
+                    mapped_name = name_map.get(item["name"], item["name"].lower())
+                    req_dict[mapped_name] = item["amount"]
+            document["requiredAttributes"] = req_dict if req_dict else None
+        
+        # Transformar 'dmgNegation' de lista a objeto DefenseStats (para armaduras)
+        if "dmgNegation" in document and isinstance(document["dmgNegation"], list):
+            defense_dict = {}
+            for item in document["dmgNegation"]:
+                if isinstance(item, dict) and "name" in item and "amount" in item:
+                    name_map = {
+                        "Phy": "physical",
+                        "Strike": "strike",
+                        "Slash": "slash",
+                        "Pierce": "pierce",
+                        "Mag": "magic",
+                        "Fire": "fire",
+                        "Ligt": "lightning",
+                        "Holy": "holy"
+                    }
+                    mapped_name = name_map.get(item["name"], item["name"].lower())
+                    defense_dict[mapped_name] = item["amount"]
+            document["dmgNegation"] = defense_dict if defense_dict else None
+        
+        # Transformar 'resistance' de lista a objeto ResistanceStats (para armaduras)
+        if "resistance" in document and isinstance(document["resistance"], list):
+            resistance_dict = {}
+            for item in document["resistance"]:
+                if isinstance(item, dict) and "name" in item and "amount" in item:
+                    name_map = {
+                        "Immunity": "immunity",
+                        "Robustness": "robustness",
+                        "Focus": "focus",
+                        "Vitality": "vitality",
+                        "Poise": "poise"
+                    }
+                    mapped_name = name_map.get(item["name"], item["name"].lower())
+                    resistance_dict[mapped_name] = item["amount"]
+            document["resistance"] = resistance_dict if resistance_dict else None
+        
+        # Convertir otros ObjectIds anidados
+        for key, value in document.items():
+            if isinstance(value, ObjectId):
+                document[key] = str(value)
+            elif isinstance(value, list):
+                document[key] = [
+                    str(item) if isinstance(item, ObjectId) else item
+                    for item in value
+                ]
+        
+        return document
+    
     def _document_to_model(self, document: Dict[str, Any]) -> T:
         """
         Convierte documento de MongoDB a modelo Pydantic.
@@ -66,8 +213,7 @@ class BaseService(Generic[T]):
         Returns:
             Instancia del modelo Pydantic
         """
-        if "_id" in document:
-            document["_id"] = str(document["_id"])
+        document = self._normalize_document(document)
         return self.model_class(**document)
     
     def _build_filter_query(self, filters: Dict[str, Any]) -> Dict[str, Any]:
@@ -86,7 +232,11 @@ class BaseService(Generic[T]):
         for key, value in filters.items():
             if value is not None:
                 if key == "name":
-                    query["name"] = {"$regex": value, "$options": "i"}
+                    # Asegurar que value es string para evitar error de $regex
+                    if isinstance(value, str):
+                        query["name"] = {"$regex": value, "$options": "i"}
+                    else:
+                        query["name"] = value
                 elif key.startswith("min_"):
                     field = key.replace("min_", "")
                     query[field] = {"$gte": value}

@@ -1,23 +1,34 @@
-from pydantic import BaseModel, Field, ConfigDict, field_validator
+from pydantic import BaseModel, Field, ConfigDict, field_validator, GetCoreSchemaHandler
+from pydantic_core import core_schema
 from typing import Optional, List, Dict, Any
 from datetime import datetime
 from bson import ObjectId
 
 class PyObjectId(str):
     """Clase personalizada para manejar ObjectId de MongoDB en Pydantic."""
+   
     @classmethod
-    def __get_validators__(cls):
-        yield cls.validate
+    def __get_pydantic_core_schema__(cls, __source_type, __handler: GetCoreSchemaHandler):
+        return core_schema.no_info_after_validator_function(
+            cls.validate,
+            core_schema.str_schema()
+        )
 
     @classmethod
     def validate(cls, v, _info=None):
+        """Valida y convierte valores a ObjectId, retornando string para JSON."""
         if isinstance(v, ObjectId):
             return str(v)
         if isinstance(v, str):
             if ObjectId.is_valid(v):
                 return v
-            raise ValueError("Invalid ObjectId")
-        raise TypeError("ObjectId must be a string or ObjectId instance")
+            raise ValueError("Invalid ObjectId format")
+        raise ValueError("ObjectId must be a string or ObjectId instance")
+    
+    @classmethod
+    def __get_pydantic_json_schema__(cls, _core_schema, _handler):
+        """Define cómo se mostrará en OpenAPI / JSON Schema."""
+        return {"type": "string", "format": "objectid", "example": "507f1f77bcf86cd799439011"}
     
 class BaseDocument(BaseModel):
     """Modelo base para todos los documentos de MongoDB."""
@@ -159,7 +170,6 @@ class PaginationParams(BaseModel):
         if v not in [1, -1]:
             raise ValueError("sort_order debe ser 1 (ascendente) o -1 (descendente)")
         return v
-
 
 class FilterParams(BaseModel):
     """

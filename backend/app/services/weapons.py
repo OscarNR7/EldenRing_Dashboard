@@ -119,9 +119,11 @@ class WeaponService(BaseService[WeaponResponse]):
             filters = filters or WeaponFilterParams()
             pagination = pagination or PaginationParams()
             
+            # Convertir filtros a dict para _build_weapon_filter_query
             query = self._build_weapon_filter_query(filters)
             
-            return await self.get_many(query, pagination)
+            # Pasar query como dict de filtros, no como query directa
+            return await self.get_many(filters=query, pagination=pagination)
             
         except Exception as e:
             logger.error(f"Error obteniendo armas: {e}")
