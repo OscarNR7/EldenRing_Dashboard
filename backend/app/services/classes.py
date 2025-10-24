@@ -25,7 +25,8 @@ class ClassService(BaseService[ClassResponse]):
     
     def _build_class_filter_query(self, filters: ClassFilterParams) -> Dict[str, Any]:
         """
-        Construye query específica para clases.
+        Construye query específica para clases, utilizando el filtro base
+        y añadiendo lógica específica para clases.
         
         Args:
             filters: Filtros de clases
@@ -33,10 +34,9 @@ class ClassService(BaseService[ClassResponse]):
         Returns:
             Query de MongoDB
         """
-        query = {}
-        
-        if filters.name:
-            query["name"] = {"$regex": filters.name, "$options": "i"}
+        # Usar el constructor de filtros base para manejar 'name', etc.
+        base_query = super()._build_filter_query(filters.model_dump(exclude_unset=True))
+        query = base_query
         
         if filters.min_level is not None:
             query["stats.level"] = {"$gte": filters.min_level}
@@ -55,6 +55,11 @@ class ClassService(BaseService[ClassResponse]):
         
         if filters.min_faith is not None:
             query["stats.faith"] = {"$gte": filters.min_faith}
+        
+        if filters.archetype:
+            # Asumiendo que el campo 'archetype' existe en el documento de MongoDB
+            # y que queremos una búsqueda case-insensitive
+            query["archetype"] = {"$regex": filters.archetype, "$options": "i"}
         
         return query
     
@@ -79,7 +84,7 @@ class ClassService(BaseService[ClassResponse]):
             
             query = self._build_class_filter_query(filters)
             
-            return await self.get_many(query, pagination)
+            return await self.get_many(filters=query, pagination=pagination)
             
         except Exception as e:
             logger.error(f"Error obteniendo clases: {e}")
@@ -99,6 +104,9 @@ class ClassService(BaseService[ClassResponse]):
             Lista de clases del arquetipo
         """
         try:
+            # La validación del arquetipo ya se hace en el modelo ClassFilterParams
+            # o se puede hacer aquí si no se usa un filtro de Pydantic.
+            # Para asegurar consistencia, normalizamos y validamos aquí también.
             valid_archetypes = [
                 'Strength', 'Dexterity', 'Quality', 'Sorcerer', 
                 'Cleric', 'Occult', 'Tank', 'Hybrid', 'Balanced'
@@ -112,15 +120,11 @@ class ClassService(BaseService[ClassResponse]):
                     detail=f"Arquetipo inválido. Opciones: {', '.join(valid_archetypes)}"
                 )
             
-            documents = list(self.collection.find({}))
+            # Realizar el filtrado a nivel de base de datos
+            query = {"archetype": {"$regex": archetype, "$options": "i"}}
+            documents = list(self.collection.find(query))
             
-            classes_by_archetype = []
-            for doc in documents:
-                class_model = self._document_to_model(doc)
-                if class_model.archetype == archetype:
-                    classes_by_archetype.append(class_model)
-            
-            return classes_by_archetype
+            return [self._document_to_model(doc) for doc in documents]
             
         except HTTPException:
             raise

@@ -28,7 +28,8 @@ class BossService(BaseService[BossResponse]):
     
     def _build_boss_filter_query(self, filters: BossFilterParams) -> Dict[str, Any]:
         """
-        Construye query específica para jefes.
+        Construye query específica para jefes, utilizando el filtro base
+        y añadiendo lógica específica para jefes.
         
         Args:
             filters: Filtros de jefes
@@ -36,45 +37,46 @@ class BossService(BaseService[BossResponse]):
         Returns:
             Query de MongoDB
         """
-        query = {}
-        
-        if filters.name:
-            query["name"] = {"$regex": filters.name, "$options": "i"}
+        # Usar el constructor de filtros base para manejar 'name', etc.
+        base_query = super()._build_filter_query(filters.model_dump(exclude_unset=True))
+        query = base_query
         
         if filters.region:
-            query["region"] = filters.region
+            query["region"] = {"$regex": filters.region, "$options": "i"}
         
         if filters.location:
             query["location"] = {"$regex": filters.location, "$options": "i"}
         
+        # Lógica para combinar filtros de drops
+        drop_conditions = []
+        
         if filters.has_drops is not None:
             if filters.has_drops:
-                query["drops"] = {"$exists": True, "$ne": None, "$ne": []}
+                drop_conditions.append({"drops": {"$exists": True, "$ne": None, "$ne": []}})
             else:
-                query["$or"] = [
+                drop_conditions.append({"$or": [
                     {"drops": {"$exists": False}},
                     {"drops": None},
                     {"drops": []}
-                ]
+                ]})
         
         if filters.drop_item:
-            query["drops"] = {"$regex": filters.drop_item, "$options": "i"}
+            drop_conditions.append({"drops": {"$regex": filters.drop_item, "$options": "i"}})
         
         if filters.has_remembrance is not None:
             if filters.has_remembrance:
-                query["drops"] = {
-                    "$elemMatch": {"$regex": "Remembrance", "$options": "i"}
-                }
+                drop_conditions.append({"drops": {"$elemMatch": {"$regex": "Remembrance", "$options": "i"}}})
             else:
-                query["drops"] = {
-                    "$not": {"$elemMatch": {"$regex": "Remembrance", "$options": "i"}}
-                }
+                drop_conditions.append({"$not": {"$elemMatch": {"$regex": "Remembrance", "$options": "i"}}})
         
         if filters.has_great_rune is not None:
             if filters.has_great_rune:
-                query["drops"] = {
-                    "$elemMatch": {"$regex": "Great Rune", "$options": "i"}
-                }
+                drop_conditions.append({"drops": {"$elemMatch": {"$regex": "Great Rune", "$options": "i"}}})
+            else:
+                drop_conditions.append({"$not": {"$elemMatch": {"$regex": "Great Rune", "$options": "i"}}})
+        
+        if drop_conditions:
+            query["$and"] = query.get("$and", []) + drop_conditions
         
         return query
     
@@ -99,7 +101,7 @@ class BossService(BaseService[BossResponse]):
             
             query = self._build_boss_filter_query(filters)
             
-            return await self.get_many(query, pagination)
+            return await self.get_many(filters=query, pagination=pagination)
             
         except Exception as e:
             logger.error(f"Error obteniendo jefes: {e}")
@@ -119,7 +121,7 @@ class BossService(BaseService[BossResponse]):
             Lista de jefes en la región
         """
         try:
-            query = {"region": region}
+            query = {"region": {"$regex": f"^{region}$", "$options": "i"}}
             documents = list(self.collection.find(query))
             
             return [self._document_to_model(doc) for doc in documents]

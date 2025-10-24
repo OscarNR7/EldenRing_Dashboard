@@ -25,7 +25,8 @@ class ArmorService(BaseService[ArmorResponse]):
     
     def _build_armor_filter_query(self, filters: ArmorFilterParams) -> Dict[str, Any]:
         """
-        Construye query específica para armaduras.
+        Construye query específica para armaduras, utilizando el filtro base
+        y añadiendo lógica específica para armaduras.
         
         Args:
             filters: Filtros de armaduras
@@ -33,29 +34,20 @@ class ArmorService(BaseService[ArmorResponse]):
         Returns:
             Query de MongoDB
         """
-        query = {}
+        # Usar el constructor de filtros base para manejar 'name', 'min_weight', 'max_weight', etc.
+        base_query = super()._build_filter_query(filters.model_dump(exclude_unset=True))
+        query = base_query
         
-        if filters.name:
-            query["name"] = {"$regex": filters.name, "$options": "i"}
-        
-        if filters.category:
-            query["category"] = filters.category
-        
+        # Lógica específica para 'category' y 'armor_slot'
+        # Si armor_slot está presente, tiene prioridad y se usa para filtrar la categoría
         if filters.armor_slot:
-            query["category"] = filters.armor_slot
+            query["category"] = {"$regex": filters.armor_slot, "$options": "i"}
+        elif filters.category:
+            query["category"] = {"$regex": filters.category, "$options": "i"}
         
-        if filters.min_weight is not None:
-            query["weight"] = {"$gte": filters.min_weight}
-        
-        if filters.max_weight is not None:
-            if "weight" in query:
-                query["weight"]["$lte"] = filters.max_weight
-            else:
-                query["weight"] = {"$lte": filters.max_weight}
-        
+        # Filtros de defensa
         if filters.min_physical_defense is not None:
             query["dmgNegation.physical"] = {"$gte": filters.min_physical_defense}
-        
         if filters.max_physical_defense is not None:
             if "dmgNegation.physical" in query:
                 query["dmgNegation.physical"]["$lte"] = filters.max_physical_defense
@@ -64,16 +56,15 @@ class ArmorService(BaseService[ArmorResponse]):
         
         if filters.min_magic_defense is not None:
             query["dmgNegation.magic"] = {"$gte": filters.min_magic_defense}
-        
         if filters.max_magic_defense is not None:
             if "dmgNegation.magic" in query:
                 query["dmgNegation.magic"]["$lte"] = filters.max_magic_defense
             else:
                 query["dmgNegation.magic"] = {"$lte": filters.max_magic_defense}
         
+        # Filtros de resistencia
         if filters.min_poise is not None:
             query["resistance.poise"] = {"$gte": filters.min_poise}
-        
         if filters.min_immunity is not None:
             query["resistance.immunity"] = {"$gte": filters.min_immunity}
         

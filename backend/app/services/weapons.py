@@ -38,7 +38,7 @@ class WeaponService(BaseService[WeaponResponse]):
             query["name"] = {"$regex": filters.name, "$options": "i"}
         
         if filters.category:
-            query["category"] = filters.category
+            query["category"] = {"$regex": filters.category, "$options": "i"}
         
         if filters.min_weight is not None:
             query["weight"] = {"$gte": filters.min_weight}
@@ -157,7 +157,7 @@ class WeaponService(BaseService[WeaponResponse]):
             Lista de armas
         """
         try:
-            query = {"category": category}
+            query = {"category": {"$regex": f"^{category}$", "$options": "i"}}
             
             documents = list(self.collection.find(query))
             

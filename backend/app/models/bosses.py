@@ -192,16 +192,20 @@ class BossFilterParams(FilterParams):
         description="Filtrar jefes requeridos para completar el juego"
     )
 
-    @field_validator('boss_tier')
+    @field_validator('region')
     @classmethod
-    def validate_boss_tier(cls, v: Optional[str]) -> Optional[str]:
-        """Valida el tier del jefe"""
+    def validate_region(cls, v: Optional[str]) -> Optional[str]:
+        """Normaliza el nombre de la región"""
         if v:
-            valid_tiers = ['Legendary', 'Major', 'Minor']
-            normalized = v.strip().title()
-            if normalized not in valid_tiers:
-                raise ValueError(f"boss_tier debe ser uno de: {', '.join(valid_tiers)}")
-            return normalized
+            return v.strip().title()
+        return v
+    
+    @field_validator('location')
+    @classmethod
+    def validate_location(cls, v: Optional[str]) -> Optional[str]:
+        """Normaliza el nombre de la ubicación"""
+        if v:
+            return v.strip().title()
         return v
 
 

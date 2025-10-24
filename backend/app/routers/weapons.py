@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, Query, Path, status
+from fastapi import APIRouter, Depends, Query, Path, Body, status
 from typing import List, Optional
 import logging
 
@@ -314,7 +314,7 @@ async def create_weapon(weapon: WeaponCreate):
 )
 async def update_weapon(
     weapon_id: str = Path(..., description="ID del arma"),
-    weapon_update: WeaponUpdate = None
+    weapon_update: WeaponUpdate = Body(...)
 ):
     """
     Actualiza campos específicos de un arma (PATCH).

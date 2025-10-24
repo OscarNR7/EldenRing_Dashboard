@@ -56,8 +56,8 @@ class AttackStats(BaseModel):
     """Modelo para estadísticas de ataques."""
     model_config = ConfigDict(str_strip_whitespace=True)
 
-    physical: Optional[int] = Field(default=None, description="Daño Físico")
-    magic: Optional[int] = Field(default=None, description="Daño Mágico")    
+    physical: Optional[int] = Field(default=None, ge=0, description="Daño Físico")
+    magic: Optional[int] = Field(default=None, ge=0, description="Daño Mágico")    
     fire: Optional[int] = Field(default=None, ge=0, description="Daño de fuego")
     lightning: Optional[int] = Field(default=None, ge=0, description="Daño eléctrico")
     holy: Optional[int] = Field(default=None, ge=0, description="Daño sagrado")
