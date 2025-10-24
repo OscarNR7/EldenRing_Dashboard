@@ -145,11 +145,24 @@ async def health_check():
 # from app.routers import weapons, armors, bosses, classes, analytics
 # 
 from app.routers import weapons
-
+from app.routers import bosses
+from app.routers import armors
 app.include_router(
     weapons.router,
     prefix=f"{settings.API_V1_PREFIX}/weapons",
     tags=["Weapons"]
+)
+
+app.include_router(
+    bosses.router,
+    prefix=f"{settings.API_V1_PREFIX}/bosses",
+    tags=["Bosses"]
+)
+
+app.include_router(
+    armors.router,
+    prefix=f"{settings.API_V1_PREFIX}/armors",
+    tags=["Armors"]
 )
 # 
 # app.include_router(
