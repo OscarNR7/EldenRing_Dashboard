@@ -37,7 +37,7 @@ class BaseDocument(BaseModel):
         arbitrary_types_allowed=True,
         json_encoders={ObjectId: str},
         str_strip_whitespace=True,
-        validate_assignment=True,  
+        validate_assignment=True,
     )
     id: Optional[PyObjectId] = Field(default=None, alias="_id", description="Id de MongoDB")
 
@@ -56,13 +56,13 @@ class AttackStats(BaseModel):
     """Modelo para estadísticas de ataques."""
     model_config = ConfigDict(str_strip_whitespace=True)
 
-    physical: Optional[int] = Field(default=None, description="Dano Fisico")
-    magic: Optional[int] = Field(default=None, description="Dano Magico")    
+    physical: Optional[int] = Field(default=None, description="Daño Físico")
+    magic: Optional[int] = Field(default=None, description="Daño Mágico")    
     fire: Optional[int] = Field(default=None, ge=0, description="Daño de fuego")
     lightning: Optional[int] = Field(default=None, ge=0, description="Daño eléctrico")
     holy: Optional[int] = Field(default=None, ge=0, description="Daño sagrado")
     critical: Optional[int] = Field(default=None, ge=0, description="Daño crítico")
-    status_effects: Optional[Dict[str, int]] = Field(default=None, description="Efectos de estado y sus probabilidades")
+    status_effects: Optional[Dict[str, int]] = Field(default=None, description="Efectos de estado")
 
     def total_damage(self) -> int:
         """Calcula el daño total sumando todos los tipos de daño."""
@@ -74,10 +74,7 @@ class AttackStats(BaseModel):
         )
 
 class DefenseStats(BaseModel):
-    """
-    Modelo para estadísticas de defensa.
-    Usado en armaduras, escudos, etc.
-    """
+    """Modelo para estadísticas de defensa."""
     model_config = ConfigDict(str_strip_whitespace=True)
 
     physical: Optional[float] = Field(default=None, ge=0, description="Defensa física")
@@ -90,10 +87,7 @@ class DefenseStats(BaseModel):
     holy: Optional[float] = Field(default=None, ge=0, description="Defensa sagrada")
 
 class ResistanceStats(BaseModel):
-    """
-    Modelo para resistencias a efectos de estado.
-    Usado en armaduras principalmente.
-    """
+    """Modelo para resistencias a efectos de estado."""
     model_config = ConfigDict(str_strip_whitespace=True)
 
     immunity: Optional[int] = Field(default=None, ge=0, description="Inmunidad")
@@ -102,12 +96,8 @@ class ResistanceStats(BaseModel):
     vitality: Optional[int] = Field(default=None, ge=0, description="Vitalidad")
     poise: Optional[float] = Field(default=None, ge=0, description="Firmeza")
 
-
 class RequirementStats(BaseModel):
-    """
-    Modelo para requerimientos de atributos.
-    Usado en armas, hechizos, etc.
-    """
+    """Modelo para requerimientos de atributos."""
     model_config = ConfigDict(str_strip_whitespace=True)
 
     strength: Optional[int] = Field(default=None, ge=0, le=99, description="Fuerza requerida")
@@ -125,15 +115,11 @@ class RequirementStats(BaseModel):
             ] if v is not None
         )
 
-
 class ScalingStats(BaseModel):
-    """
-    Modelo para escalado de atributos.
-    Usado en armas principalmente.
-    """
+    """Modelo para escalado de atributos."""
     model_config = ConfigDict(str_strip_whitespace=True)
 
-    strength: Optional[str] = Field(default=None, description="Escalado de fuerza (E, D, C, B, A, S)")
+    strength: Optional[str] = Field(default=None, description="Escalado de fuerza")
     dexterity: Optional[str] = Field(default=None, description="Escalado de destreza")
     intelligence: Optional[str] = Field(default=None, description="Escalado de inteligencia")
     faith: Optional[str] = Field(default=None, description="Escalado de fe")
@@ -142,20 +128,32 @@ class ScalingStats(BaseModel):
     @field_validator('strength', 'dexterity', 'intelligence', 'faith', 'arcane')
     @classmethod
     def validate_scaling(cls, v: Optional[str]) -> Optional[str]:
-        """Valida que el escalado sea una letra válida"""
+        """
+        Valida y normaliza el escalado.
+        Acepta valores válidos y convierte '?' o valores desconocidos a '-'.
+        """
         if v is None:
             return v
+        
+        v = str(v).strip().upper()
+        
+        # Valores válidos de escalado
         valid_grades = ['E', 'D', 'C', 'B', 'A', 'S', '-']
-        if v.upper() not in valid_grades:
-            raise ValueError(f"Escalado debe ser uno de: {', '.join(valid_grades)}")
-        return v.upper()
-
+        
+        # Si el valor es válido, retornarlo
+        if v in valid_grades:
+            return v
+        
+        # Si es '?' u otro valor desconocido, convertir a '-' (sin escalado)
+        if v in ['?', '', 'NONE', 'N/A']:
+            return '-'
+        
+        # Si llegamos aquí, es un valor inesperado
+        # En lugar de fallar, lo convertimos a '-'
+        return '-'
 
 class PaginationParams(BaseModel):
-    """
-    Modelo para parámetros de paginación.
-    Usado en queries de listado.
-    """
+    """Modelo para parámetros de paginación."""
     model_config = ConfigDict(str_strip_whitespace=True)
 
     skip: int = Field(default=0, ge=0, description="Número de registros a omitir")
@@ -172,12 +170,10 @@ class PaginationParams(BaseModel):
         return v
 
 class FilterParams(BaseModel):
-    """
-    Modelo base para filtros de búsqueda.
-    """
+    """Modelo base para filtros de búsqueda."""
     model_config = ConfigDict(str_strip_whitespace=True)
 
-    name: Optional[str] = Field(default=None, description="Filtrar por nombre (búsqueda parcial)")
+    name: Optional[str] = Field(default=None, description="Filtrar por nombre")
     category: Optional[str] = Field(default=None, description="Filtrar por categoría")
     min_weight: Optional[float] = Field(default=None, ge=0, description="Peso mínimo")
     max_weight: Optional[float] = Field(default=None, ge=0, description="Peso máximo")

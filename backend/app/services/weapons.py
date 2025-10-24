@@ -131,7 +131,20 @@ class WeaponService(BaseService[WeaponResponse]):
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 detail="Error al obtener armas"
             )
-    
+    async def get_all_categories(self) -> list[str]:
+        """
+        Devuelve la lista de categorías únicas de armas.
+        """
+        try:
+            categories = self.collection.distinct("category")
+            return sorted([c for c in categories if c])
+        except Exception as e:
+            logger.error(f"Error obteniendo categorías de armas: {e}")
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Error al obtener categorías de armas"
+            )
+        
     async def get_by_category(self, category: str) -> List[WeaponResponse]:
         """
         Obtiene todas las armas de una categoría.
@@ -389,5 +402,4 @@ class WeaponService(BaseService[WeaponResponse]):
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 detail="Error al calcular estadísticas"
             )
-
 weapon_service = WeaponService()

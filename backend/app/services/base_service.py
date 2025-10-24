@@ -4,7 +4,8 @@ from pymongo import ASCENDING, DESCENDING
 from bson import ObjectId
 from fastapi import HTTPException, status
 import logging
-from functools import lru_cache
+import json
+import ast
 
 from app.database import MongoDB
 from app.models.base import BaseDocument, PaginationParams
@@ -14,9 +15,20 @@ logger = logging.getLogger(__name__)
 T = TypeVar('T', bound=BaseDocument)
 
 class BaseService(Generic[T]):
+    def _clean_objectids(self, obj):
+        """
+        Recorre recursivamente dicts/lists y convierte cualquier ObjectId a str.
+        """
+        if isinstance(obj, ObjectId):
+            return str(obj)
+        elif isinstance(obj, dict):
+            return {k: self._clean_objectids(v) for k, v in obj.items()}
+        elif isinstance(obj, list):
+            return [self._clean_objectids(i) for i in obj]
+        else:
+            return obj
     """
     Servicio base genérico con operaciones CRUD optimizadas.
-    Implementa patrones de rendimiento y cacheo cuando es apropiado.
     """
     
     def __init__(self, collection_name: str, model_class: Type[T]):
@@ -39,15 +51,6 @@ class BaseService(Generic[T]):
     def _validate_object_id(self, item_id: str) -> ObjectId:
         """
         Valida y convierte string a ObjectId.
-        
-        Args:
-            item_id: ID en formato string
-            
-        Returns:
-            ObjectId válido
-            
-        Raises:
-            HTTPException: Si el ID no es válido
         """
         if not ObjectId.is_valid(item_id):
             raise HTTPException(
@@ -56,140 +59,151 @@ class BaseService(Generic[T]):
             )
         return ObjectId(item_id)
     
+    def _parse_json_field(self, value: Any) -> Any:
+        """
+        Parsea un campo que puede estar como JSON string.
+        """
+        if not isinstance(value, str):
+            return value
+        
+        try:
+            return ast.literal_eval(value)
+        except (ValueError, SyntaxError):
+            try:
+                return json.loads(value)
+            except (json.JSONDecodeError, TypeError):
+                return value
+    
+    def _transform_list_to_dict(self, items: List[Dict], name_mapping: Dict[str, str]) -> Dict:
+        """
+        Transforma lista de diccionarios con 'name' y 'amount'/'scaling' a diccionario plano.
+        
+        Args:
+            items: Lista de diccionarios [{name: "Str", amount: 10}, ...]
+            name_mapping: Mapeo de nombres abreviados a completos
+        
+        Returns:
+            Diccionario normalizado {strength: 10, ...}
+        """
+        if not items:
+            return {}
+        
+        result = {}
+        for item in items:
+            if not isinstance(item, dict):
+                continue
+            
+            # Obtener nombre y valor
+            name = item.get("name")
+            value = item.get("amount") or item.get("scaling")
+            
+            if name and value is not None:
+                # Mapear nombre abreviado a completo
+                mapped_name = name_mapping.get(name, name.lower())
+                result[mapped_name] = value
+        
+        return result if result else None
+    
     def _normalize_document(self, document: Dict[str, Any]) -> Dict[str, Any]:
         """
         Normaliza un documento de MongoDB antes de convertirlo a modelo Pydantic.
-        - Convierte ObjectId a string
-        - Parsea campos JSON guardados como strings
-        - Transforma listas de diccionarios al formato esperado por los modelos
         
-        Args:
-            document: Documento de MongoDB
-            
-        Returns:
-            Documento normalizado
+        Maneja:
+        - Conversión de ObjectId a string
+        - Parsing de campos JSON guardados como strings
+        - Transformación de listas a diccionarios según formato esperado
         """
-        import json
-        import ast
-        
+        # Convertir _id a string
         if "_id" in document and isinstance(document["_id"], ObjectId):
             document["_id"] = str(document["_id"])
         
         # Parsear campos que pueden estar como strings
-        string_fields = ["attack", "defence", "scalesWith", "requiredAttributes", "dmgNegation", "resistance", "drops"]
+        json_fields = ["attack", "defence", "scalesWith", "requiredAttributes", 
+                      "dmgNegation", "resistance", "drops", "stats"]
         
-        for field in string_fields:
+        for field in json_fields:
             if field in document and isinstance(document[field], str):
-                try:
-                    # Intentar parsear como Python literal (para listas con comillas simples)
-                    document[field] = ast.literal_eval(document[field])
-                except (ValueError, SyntaxError):
-                    try:
-                        # Intentar parsear como JSON
-                        document[field] = json.loads(document[field])
-                    except (json.JSONDecodeError, TypeError):
-                        pass
+                document[field] = self._parse_json_field(document[field])
         
-        # Transformar 'attack' de lista a objeto AttackStats
+        # Mapeos de nombres abreviados
+        attack_mapping = {
+            "Phy": "physical",
+            "Mag": "magic",
+            "Fire": "fire",
+            "Ligt": "lightning",
+            "Holy": "holy",
+            "Crit": "critical"
+        }
+        
+        defense_mapping = {
+            "Phy": "physical",
+            "Strike": "strike",
+            "Slash": "slash",
+            "Pierce": "pierce",
+            "Mag": "magic",
+            "Fire": "fire",
+            "Ligt": "lightning",
+            "Holy": "holy",
+            "Boost": "boost"
+        }
+        
+        scaling_mapping = {
+            "Str": "strength",
+            "Dex": "dexterity",
+            "Int": "intelligence",
+            "Fai": "faith",
+            "Arc": "arcane"
+        }
+        
+        resistance_mapping = {
+            "Immunity": "immunity",
+            "Robustness": "robustness",
+            "Focus": "focus",
+            "Vitality": "vitality",
+            "Poise": "poise"
+        }
+        
+        # Transformar 'attack' de lista a diccionario
         if "attack" in document and isinstance(document["attack"], list):
-            attack_dict = {}
-            for item in document["attack"]:
-                if isinstance(item, dict) and "name" in item and "amount" in item:
-                    name_map = {
-                        "Phy": "physical",
-                        "Mag": "magic",
-                        "Fire": "fire",
-                        "Ligt": "lightning",
-                        "Holy": "holy",
-                        "Crit": "critical"
-                    }
-                    mapped_name = name_map.get(item["name"], item["name"].lower())
-                    attack_dict[mapped_name] = item["amount"]
-            document["attack"] = attack_dict if attack_dict else None
+            document["attack"] = self._transform_list_to_dict(
+                document["attack"], 
+                attack_mapping
+            )
         
-        # Transformar 'defence' de lista a diccionario simple
+        # Transformar 'defence' de lista a diccionario
         if "defence" in document and isinstance(document["defence"], list):
-            defence_dict = {}
-            for item in document["defence"]:
-                if isinstance(item, dict) and "name" in item and "amount" in item:
-                    name_map = {
-                        "Phy": "physical",
-                        "Mag": "magic",
-                        "Fire": "fire",
-                        "Ligt": "lightning",
-                        "Holy": "holy",
-                        "Boost": "boost"
-                    }
-                    mapped_name = name_map.get(item["name"], item["name"].lower())
-                    defence_dict[mapped_name] = item["amount"]
-            document["defence"] = defence_dict if defence_dict else None
+            document["defence"] = self._transform_list_to_dict(
+                document["defence"], 
+                defense_mapping
+            )
         
-        # Transformar 'scalesWith' de lista a objeto ScalingStats
+        # Transformar 'scalesWith' de lista a diccionario
         if "scalesWith" in document and isinstance(document["scalesWith"], list):
-            scaling_dict = {}
-            for item in document["scalesWith"]:
-                if isinstance(item, dict) and "name" in item and "scaling" in item:
-                    name_map = {
-                        "Str": "strength",
-                        "Dex": "dexterity",
-                        "Int": "intelligence",
-                        "Fai": "faith",
-                        "Arc": "arcane"
-                    }
-                    mapped_name = name_map.get(item["name"], item["name"].lower())
-                    scaling_dict[mapped_name] = item["scaling"]
-            document["scalesWith"] = scaling_dict if scaling_dict else None
+            document["scalesWith"] = self._transform_list_to_dict(
+                document["scalesWith"], 
+                scaling_mapping
+            )
         
-        # Transformar 'requiredAttributes' de lista a objeto RequirementStats
+        # Transformar 'requiredAttributes' de lista a diccionario
         if "requiredAttributes" in document and isinstance(document["requiredAttributes"], list):
-            req_dict = {}
-            for item in document["requiredAttributes"]:
-                if isinstance(item, dict) and "name" in item and "amount" in item:
-                    name_map = {
-                        "Str": "strength",
-                        "Dex": "dexterity",
-                        "Int": "intelligence",
-                        "Fai": "faith",
-                        "Arc": "arcane"
-                    }
-                    mapped_name = name_map.get(item["name"], item["name"].lower())
-                    req_dict[mapped_name] = item["amount"]
-            document["requiredAttributes"] = req_dict if req_dict else None
+            document["requiredAttributes"] = self._transform_list_to_dict(
+                document["requiredAttributes"], 
+                scaling_mapping
+            )
         
-        # Transformar 'dmgNegation' de lista a objeto DefenseStats (para armaduras)
+        # Transformar 'dmgNegation' de lista a diccionario
         if "dmgNegation" in document and isinstance(document["dmgNegation"], list):
-            defense_dict = {}
-            for item in document["dmgNegation"]:
-                if isinstance(item, dict) and "name" in item and "amount" in item:
-                    name_map = {
-                        "Phy": "physical",
-                        "Strike": "strike",
-                        "Slash": "slash",
-                        "Pierce": "pierce",
-                        "Mag": "magic",
-                        "Fire": "fire",
-                        "Ligt": "lightning",
-                        "Holy": "holy"
-                    }
-                    mapped_name = name_map.get(item["name"], item["name"].lower())
-                    defense_dict[mapped_name] = item["amount"]
-            document["dmgNegation"] = defense_dict if defense_dict else None
+            document["dmgNegation"] = self._transform_list_to_dict(
+                document["dmgNegation"], 
+                defense_mapping
+            )
         
-        # Transformar 'resistance' de lista a objeto ResistanceStats (para armaduras)
+        # Transformar 'resistance' de lista a diccionario
         if "resistance" in document and isinstance(document["resistance"], list):
-            resistance_dict = {}
-            for item in document["resistance"]:
-                if isinstance(item, dict) and "name" in item and "amount" in item:
-                    name_map = {
-                        "Immunity": "immunity",
-                        "Robustness": "robustness",
-                        "Focus": "focus",
-                        "Vitality": "vitality",
-                        "Poise": "poise"
-                    }
-                    mapped_name = name_map.get(item["name"], item["name"].lower())
-                    resistance_dict[mapped_name] = item["amount"]
-            document["resistance"] = resistance_dict if resistance_dict else None
+            document["resistance"] = self._transform_list_to_dict(
+                document["resistance"], 
+                resistance_mapping
+            )
         
         # Convertir otros ObjectIds anidados
         for key, value in document.items():
@@ -207,32 +221,26 @@ class BaseService(Generic[T]):
         """
         Convierte documento de MongoDB a modelo Pydantic.
         
-        Args:
-            document: Documento de MongoDB
-            
-        Returns:
-            Instancia del modelo Pydantic
+        Incluye manejo robusto de errores con logging detallado.
         """
-        document = self._normalize_document(document)
-        return self.model_class(**document)
+        try:
+            document = self._normalize_document(document)
+            return self.model_class(**document)
+        except Exception as e:
+            logger.error(f"Error convirtiendo documento a modelo: {e}")
+            logger.error(f"Documento problemático: {document.get('name', 'Sin nombre')}")
+            logger.error(f"Campos problemáticos: {e}")
+            raise
     
     def _build_filter_query(self, filters: Dict[str, Any]) -> Dict[str, Any]:
         """
         Construye query de MongoDB desde filtros.
-        Elimina valores None y prepara operadores.
-        
-        Args:
-            filters: Diccionario de filtros
-            
-        Returns:
-            Query optimizada para MongoDB
         """
         query = {}
         
         for key, value in filters.items():
             if value is not None:
                 if key == "name":
-                    # Asegurar que value es string para evitar error de $regex
                     if isinstance(value, str):
                         query["name"] = {"$regex": value, "$options": "i"}
                     else:
@@ -254,15 +262,6 @@ class BaseService(Generic[T]):
     async def get_by_id(self, item_id: str) -> T:
         """
         Obtiene un documento por ID.
-        
-        Args:
-            item_id: ID del documento
-            
-        Returns:
-            Modelo Pydantic del documento
-            
-        Raises:
-            HTTPException: Si no se encuentra o ID inválido
         """
         obj_id = self._validate_object_id(item_id)
         
@@ -283,7 +282,7 @@ class BaseService(Generic[T]):
             logger.error(f"Error obteniendo {self.collection_name} {item_id}: {e}")
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail="Error interno del servidor"
+                detail=f"Error interno: {str(e)}"
             )
     
     async def get_many(
@@ -294,15 +293,6 @@ class BaseService(Generic[T]):
     ) -> Dict[str, Any]:
         """
         Obtiene múltiples documentos con filtros y paginación.
-        Optimizado con proyección para reducir datos transferidos.
-        
-        Args:
-            filters: Filtros de búsqueda
-            pagination: Parámetros de paginación
-            projection: Campos a retornar (optimización)
-            
-        Returns:
-            Dict con items, total, skip y limit
         """
         try:
             query = self._build_filter_query(filters or {})
@@ -322,7 +312,13 @@ class BaseService(Generic[T]):
             documents = list(cursor)
             total = self.collection.count_documents(query)
             
-            items = [self._document_to_model(doc) for doc in documents]
+            items = []
+            for doc in documents:
+                try:
+                    items.append(self._document_to_model(doc))
+                except Exception as e:
+                    logger.warning(f"Omitiendo documento con error: {e}")
+                    continue
             
             return {
                 "items": items,
@@ -335,18 +331,12 @@ class BaseService(Generic[T]):
             logger.error(f"Error obteniendo lista de {self.collection_name}: {e}")
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail="Error al obtener datos"
+                detail=f"Error al obtener datos: {str(e)}"
             )
     
     async def create(self, item_data: T) -> T:
         """
         Crea un nuevo documento.
-        
-        Args:
-            item_data: Modelo Pydantic con los datos
-            
-        Returns:
-            Modelo con el ID asignado
         """
         try:
             document = item_data.model_dump_mongo(exclude={"id"})
@@ -367,13 +357,6 @@ class BaseService(Generic[T]):
     async def update(self, item_id: str, item_data: Dict[str, Any]) -> T:
         """
         Actualiza un documento existente (PATCH).
-        
-        Args:
-            item_id: ID del documento
-            item_data: Datos a actualizar
-            
-        Returns:
-            Modelo actualizado
         """
         obj_id = self._validate_object_id(item_id)
         
@@ -411,12 +394,6 @@ class BaseService(Generic[T]):
     async def delete(self, item_id: str) -> Dict[str, str]:
         """
         Elimina un documento.
-        
-        Args:
-            item_id: ID del documento
-            
-        Returns:
-            Mensaje de confirmación
         """
         obj_id = self._validate_object_id(item_id)
         
@@ -443,12 +420,6 @@ class BaseService(Generic[T]):
     async def count(self, filters: Optional[Dict[str, Any]] = None) -> int:
         """
         Cuenta documentos que cumplen los filtros.
-        
-        Args:
-            filters: Filtros de búsqueda
-            
-        Returns:
-            Número de documentos
         """
         try:
             query = self._build_filter_query(filters or {})
@@ -463,13 +434,6 @@ class BaseService(Generic[T]):
     async def exists(self, item_id: str) -> bool:
         """
         Verifica si un documento existe.
-        Más eficiente que get_by_id cuando solo necesitas saber si existe.
-        
-        Args:
-            item_id: ID del documento
-            
-        Returns:
-            True si existe, False si no
         """
         obj_id = self._validate_object_id(item_id)
         
@@ -483,13 +447,6 @@ class BaseService(Generic[T]):
     async def bulk_create(self, items: List[T]) -> Dict[str, Any]:
         """
         Crea múltiples documentos en una sola operación.
-        Optimizado para inserciones masivas.
-        
-        Args:
-            items: Lista de modelos a crear
-            
-        Returns:
-            Estadísticas de la operación
         """
         if not items:
             return {"inserted": 0, "ids": []}
@@ -513,24 +470,12 @@ class BaseService(Generic[T]):
     
     async def aggregate(self, pipeline: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
         """
-        Ejecuta un pipeline de agregación de MongoDB.
-        Para análisis y estadísticas complejas.
-        
-        Args:
-            pipeline: Pipeline de agregación de MongoDB
-            
-        Returns:
-            Resultados de la agregación
+        Ejecuta un pipeline de agregación de MongoDB y normaliza todos los ObjectId y campos anidados.
         """
         try:
             results = list(self.collection.aggregate(pipeline))
-            
-            for result in results:
-                if "_id" in result and isinstance(result["_id"], ObjectId):
-                    result["_id"] = str(result["_id"])
-            
-            return results
-            
+            cleaned_results = [self._clean_objectids(result) for result in results]
+            return cleaned_results
         except Exception as e:
             logger.error(f"Error en agregación de {self.collection_name}: {e}")
             raise HTTPException(
