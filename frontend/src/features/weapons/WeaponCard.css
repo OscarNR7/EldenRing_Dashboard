@@ -1,0 +1,81 @@
+.weapon-card {
+  background-color: var(--color-bg-panel);
+  border: 1px solid var(--color-border);
+  border-radius: 0.5rem;
+  overflow: hidden;
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+  cursor: pointer;
+}
+
+.weapon-card:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 8px 16px rgba(192, 163, 94, 0.2);
+  border-color: var(--color-accent-gold);
+}
+
+.weapon-card-image {
+  width: 100%;
+  height: 200px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  background-color: rgba(255, 255, 255, 0.05);
+  padding: 1rem;
+}
+
+.weapon-card-image img {
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+}
+
+.weapon-card-content {
+  padding: 1rem;
+}
+
+.weapon-name {
+  font-size: 1.2rem;
+  color: var(--color-accent-gold);
+  margin: 0 0 0.5rem 0;
+  font-weight: 600;
+}
+
+.weapon-category {
+  color: var(--color-text-secondary);
+  font-size: 0.9rem;
+  margin: 0 0 1rem 0;
+  font-style: italic;
+}
+
+.weapon-stat {
+  color: var(--color-text-primary);
+  font-size: 0.9rem;
+  margin: 0.3rem 0;
+}
+
+.stat-label {
+  color: var(--color-text-secondary);
+  font-weight: 600;
+}
+
+.weapon-requirements {
+  margin-top: 1rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--color-border);
+}
+
+.requirements-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+}
+
+.requirements-grid span {
+  background-color: rgba(192, 163, 94, 0.1);
+  color: var(--color-accent-gold);
+  padding: 0.25rem 0.5rem;
+  border-radius: 0.25rem;
+  font-size: 0.85rem;
+  font-weight: 600;
+}

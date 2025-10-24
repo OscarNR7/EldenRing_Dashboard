@@ -1,24 +1,24 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import useFetchData from '../../hooks/useFetchData';
-import { getWeapons } from '../../lib/weaponService';
+import { getBosses } from '../../lib/bossService';
 import LoadingSpinner from '../../components/LoadingSpinner';
-import WeaponFilter from '../../features/weapons/WeaponFilter';
-import WeaponGrid from '../../features/weapons/WeaponGrid';
+import BossFilter from '../../features/bosses/BossFilter';
+import BossGrid from '../../features/bosses/BossGrid';
 
-const ExploreWeaponsPage = () => {
+const ExploreBossesPage = () => {
   const [filters, setFilters] = useState({});
   const [pagination, setPagination] = useState({ skip: 0, limit: 20 });
   const { data, loading, error, execute } = useFetchData();
 
-  const fetchWeapons = useCallback(async () => {
+  const fetchBosses = useCallback(async () => {
     const params = { ...filters, ...pagination };
-    const result = await getWeapons(params);
+    const result = await getBosses(params);
     return result;
   }, [filters, pagination]);
 
   // Carga inicial de datos al montar el componente
   useEffect(() => {
-    execute(fetchWeapons);
+    execute(fetchBosses);
   }, []);
 
   // Solo hace fetch cuando el usuario pulsa 'Buscar'
@@ -27,7 +27,7 @@ const ExploreWeaponsPage = () => {
     setPagination({ skip: 0, limit: 20 }); // Resetear paginación
     execute(async () => {
       const params = { ...newFilters, skip: 0, limit: 20 };
-      return await getWeapons(params);
+      return await getBosses(params);
     });
   }, [execute]);
 
@@ -36,9 +36,14 @@ const ExploreWeaponsPage = () => {
     setPagination(prev => ({ ...prev, skip: newSkip }));
     execute(async () => {
       const params = { ...filters, skip: newSkip, limit: pagination.limit };
-      return await getWeapons(params);
+      return await getBosses(params);
     });
   }, [execute, filters, pagination.limit]);
+
+  // Aquí iría la lógica de paginación si se implementa un componente de paginación
+  // const handlePageChange = (newSkip) => {
+  //   setPagination(prev => ({ ...prev, skip: newSkip }));
+  // };
 
   if (loading) {
     return <LoadingSpinner />;
@@ -54,10 +59,10 @@ const ExploreWeaponsPage = () => {
 
   return (
     <div className="container">
-      <h1>Explorador de Armas</h1>
-      <p className="catalog-info">Total de armas: {totalItems}</p>
-      <WeaponFilter onFilterChange={handleFilterChange} />
-      {data && data.items && <WeaponGrid weapons={data.items} />}
+      <h1>Explorador de Jefes</h1>
+      <p className="catalog-info">Total de jefes: {totalItems}</p>
+      <BossFilter onFilterChange={handleFilterChange} />
+      {data && data.items && <BossGrid bosses={data.items} />}
       
       {totalPages > 1 && (
         <div className="pagination">
@@ -84,5 +89,4 @@ const ExploreWeaponsPage = () => {
   );
 };
 
-export default ExploreWeaponsPage;
-
+export default ExploreBossesPage;

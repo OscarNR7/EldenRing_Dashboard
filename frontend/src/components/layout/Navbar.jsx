@@ -17,20 +17,30 @@ const Navbar = () => {
             </NavLink>
           </li>
           <li>
-            <NavLink to="/explore/weapons" className={({ isActive }) => isActive ? 'active' : ''}>
+            <NavLink to="/weapons" className={({ isActive }) => isActive ? 'active' : ''}>
               Armas
             </NavLink>
           </li>
           <li>
-            <NavLink to="/explore/bosses" className={({ isActive }) => isActive ? 'active' : ''}>
+            <NavLink to="/bosses" className={({ isActive }) => isActive ? 'active' : ''}>
               Jefes
             </NavLink>
           </li>
           <li>
+            <NavLink to="/armors" className={({ isActive }) => isActive ? 'active' : ''}>
+              Armaduras
+            </NavLink>
+          </li>
+          <li>
+            <NavLink to="/classes" className={({ isActive }) => isActive ? 'active' : ''}>
+              Clases
+            </NavLink>
+          </li>
+          {/* <li>
             <NavLink to="/tools/comparator" className={({ isActive }) => isActive ? 'active' : ''}>
               Herramientas
             </NavLink>
-          </li>
+          </li> */}
         </ul>
       </div>
     </nav>

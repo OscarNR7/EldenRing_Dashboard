@@ -1,0 +1,23 @@
+.weapon-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 1.5rem;
+  margin-top: 1.5rem;
+}
+
+.no-results {
+  text-align: center;
+  color: var(--color-text-secondary);
+  font-size: 1.1rem;
+  margin: 3rem 0;
+  padding: 2rem;
+  background-color: var(--color-bg-panel);
+  border-radius: 0.5rem;
+  border: 1px solid var(--color-border);
+}
+
+@media (max-width: 768px) {
+  .weapon-grid {
+    grid-template-columns: 1fr;
+  }
+}

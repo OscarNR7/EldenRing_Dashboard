@@ -1,24 +1,24 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import useFetchData from '../../hooks/useFetchData';
-import { getWeapons } from '../../lib/weaponService';
+import { getArmors } from '../../lib/armorService';
 import LoadingSpinner from '../../components/LoadingSpinner';
-import WeaponFilter from '../../features/weapons/WeaponFilter';
-import WeaponGrid from '../../features/weapons/WeaponGrid';
+import ArmorFilter from '../../features/armors/ArmorFilter';
+import ArmorGrid from '../../features/armors/ArmorGrid';
 
-const ExploreWeaponsPage = () => {
+const ExploreArmorsPage = () => {
   const [filters, setFilters] = useState({});
   const [pagination, setPagination] = useState({ skip: 0, limit: 20 });
   const { data, loading, error, execute } = useFetchData();
 
-  const fetchWeapons = useCallback(async () => {
+  const fetchArmors = useCallback(async () => {
     const params = { ...filters, ...pagination };
-    const result = await getWeapons(params);
+    const result = await getArmors(params);
     return result;
   }, [filters, pagination]);
 
   // Carga inicial de datos al montar el componente
   useEffect(() => {
-    execute(fetchWeapons);
+    execute(fetchArmors);
   }, []);
 
   // Solo hace fetch cuando el usuario pulsa 'Buscar'
@@ -27,7 +27,7 @@ const ExploreWeaponsPage = () => {
     setPagination({ skip: 0, limit: 20 }); // Resetear paginación
     execute(async () => {
       const params = { ...newFilters, skip: 0, limit: 20 };
-      return await getWeapons(params);
+      return await getArmors(params);
     });
   }, [execute]);
 
@@ -36,7 +36,7 @@ const ExploreWeaponsPage = () => {
     setPagination(prev => ({ ...prev, skip: newSkip }));
     execute(async () => {
       const params = { ...filters, skip: newSkip, limit: pagination.limit };
-      return await getWeapons(params);
+      return await getArmors(params);
     });
   }, [execute, filters, pagination.limit]);
 
@@ -54,10 +54,10 @@ const ExploreWeaponsPage = () => {
 
   return (
     <div className="container">
-      <h1>Explorador de Armas</h1>
-      <p className="catalog-info">Total de armas: {totalItems}</p>
-      <WeaponFilter onFilterChange={handleFilterChange} />
-      {data && data.items && <WeaponGrid weapons={data.items} />}
+      <h1>Explorador de Armaduras</h1>
+      <p className="catalog-info">Total de armaduras: {totalItems}</p>
+      <ArmorFilter onFilterChange={handleFilterChange} />
+      {data && data.items && <ArmorGrid armors={data.items} />}
       
       {totalPages > 1 && (
         <div className="pagination">
@@ -84,5 +84,4 @@ const ExploreWeaponsPage = () => {
   );
 };
 
-export default ExploreWeaponsPage;
-
+export default ExploreArmorsPage;

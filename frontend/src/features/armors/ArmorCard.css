@@ -1,23 +1,23 @@
-.boss-card {
+.armor-card {
   background-color: var(--color-bg-panel);
   border: 1px solid var(--color-border);
   border-radius: 0.5rem;
   overflow: hidden;
   text-align: center;
-  width: 250px; /* Ancho fijo para las tarjetas de jefe */
-  flex-shrink: 0; /* Evita que las tarjetas se encojan en el carrusel */
+  width: 250px; /* Ancho fijo para las tarjetas de armadura */
+  flex-shrink: 0;
   display: flex;
   flex-direction: column;
   justify-content: space-between;
 }
 
-.boss-card-header {
+.armor-card-header {
   padding: 0.75rem;
   background-color: var(--color-bg-main);
   border-bottom: 1px solid var(--color-border);
 }
 
-.boss-card-title {
+.armor-card-title {
   font-size: 1.1rem;
   font-weight: bold;
   color: var(--color-accent-gold);
@@ -26,7 +26,7 @@
   text-overflow: ellipsis;
 }
 
-.boss-card-content {
+.armor-card-content {
   padding: 0.5rem;
   flex-grow: 1;
   display: flex;
@@ -34,7 +34,7 @@
   justify-content: space-between;
 }
 
-.boss-card-image {
+.armor-card-image {
   width: 100%;
   height: 150px; /* Altura fija para la imagen */
   object-fit: cover;
@@ -42,7 +42,7 @@
   margin-bottom: 0.5rem;
 }
 
-.boss-card-image-placeholder {
+.armor-card-image-placeholder {
   width: 100%;
   height: 150px;
   background-color: var(--color-border);
@@ -54,12 +54,12 @@
   margin-bottom: 0.5rem;
 }
 
-.boss-card-details p {
+.armor-card-details p {
   margin: 0.2rem 0;
   color: var(--color-text-secondary);
   font-size: 0.9rem;
 }
 
-.boss-card-details strong {
+.armor-card-details strong {
   color: var(--color-text-primary);
 }
