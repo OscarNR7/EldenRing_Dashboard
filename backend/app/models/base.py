@@ -157,7 +157,7 @@ class PaginationParams(BaseModel):
     model_config = ConfigDict(str_strip_whitespace=True)
 
     skip: int = Field(default=0, ge=0, description="Número de registros a omitir")
-    limit: int = Field(default=20, ge=1, le=100, description="Número máximo de registros")
+    limit: int = Field(default=20, ge=1, le=500, description="Número máximo de registros")
     sort_by: Optional[str] = Field(default=None, description="Campo por el cual ordenar")
     sort_order: int = Field(default=1, description="Orden: 1 (ascendente) o -1 (descendente)")
 

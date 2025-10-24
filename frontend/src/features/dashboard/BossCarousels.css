@@ -1,0 +1,43 @@
+.boss-carousels-container {
+  margin-top: 2rem;
+  margin-bottom: 2rem;
+}
+
+.carousel-section-title {
+  color: var(--color-accent-gold);
+  font-size: 1.8rem;
+  margin-bottom: 1rem;
+  text-align: center;
+}
+
+.carousel {
+  display: flex;
+  overflow-x: auto; /* Permite el scroll horizontal */
+  gap: 1rem;
+  padding: 1rem 0;
+  -webkit-overflow-scrolling: touch; /* Mejora el scroll en iOS */
+  scrollbar-width: thin; /* Firefox */
+  scrollbar-color: var(--color-accent-gold) var(--color-bg-panel); /* Firefox */
+}
+
+/* Estilos para Webkit (Chrome, Safari) */
+.carousel::-webkit-scrollbar {
+  height: 8px;
+}
+
+.carousel::-webkit-scrollbar-track {
+  background: var(--color-bg-panel);
+  border-radius: 10px;
+}
+
+.carousel::-webkit-scrollbar-thumb {
+  background-color: var(--color-accent-gold);
+  border-radius: 10px;
+  border: 2px solid var(--color-bg-panel);
+}
+
+.no-data-message {
+  color: var(--color-text-secondary);
+  text-align: center;
+  margin-top: 1rem;
+}

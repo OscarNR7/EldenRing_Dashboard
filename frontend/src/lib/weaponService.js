@@ -4,7 +4,7 @@ const WEAPON_BASE_URL = '/weapons';
 
 export const getWeapons = async (params) => {
   try {
-    const response = await api.get(WEAPON_BASE_URL, { params });
+    const response = await api.get(WEAPON_BASE_URL, { params: params });
     return response.data;
   } catch (error) {
     console.error("Error fetching weapons:", error);

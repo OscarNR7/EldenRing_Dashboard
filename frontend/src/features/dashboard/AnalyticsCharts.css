@@ -1,0 +1,21 @@
+.analytics-charts-container {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 1.5rem;
+  margin-top: 2rem;
+  margin-bottom: 2rem;
+}
+
+.chart-card {
+  background-color: var(--color-bg-panel);
+  border: 1px solid var(--color-border);
+  border-radius: 0.5rem;
+}
+
+.chart-card .recharts-text {
+  fill: var(--color-text-secondary) !important;
+}
+
+.chart-card .recharts-legend-item-text {
+  color: var(--color-text-secondary) !important;
+}
