@@ -1,5 +1,6 @@
 import os
-from typing import List
+import json
+from typing import List, Union
 from pydantic_settings import BaseSettings
 from pydantic import Field
 from dotenv import load_dotenv
@@ -41,7 +42,7 @@ class Settings(BaseSettings):
     RELOAD: bool = Field(default=True)
     
     # CORS
-    CORS_ORIGINS: List[str] = Field(
+    CORS_ORIGINS: Union[List[str], str] = Field(
         default=["http://localhost:3000", "http://localhost:5173"]
     )
     
@@ -72,11 +73,28 @@ class Settings(BaseSettings):
     
     def get_cors_origins(self) -> List[str]:
         """
-        Parsea CORS_ORIGINS si viene como string separado por comas
+        Parsea CORS_ORIGINS desde una variable de entorno.
+        Puede ser una lista en el código, un string JSON o un string separado por comas.
         """
+        if isinstance(self.CORS_ORIGINS, list):
+            return self.CORS_ORIGINS
+
         if isinstance(self.CORS_ORIGINS, str):
+            # Intentar parsear como JSON
+            if self.CORS_ORIGINS.startswith("[") and self.CORS_ORIGINS.endswith("]"):
+                try:
+                    return json.loads(self.CORS_ORIGINS)
+                except json.JSONDecodeError:
+                    logger.warning(
+                        "CORS_ORIGINS parece ser un JSON pero no se pudo parsear. "
+                        "Tratando como string separado por comas."
+                    )
+            
+            # Tratar como string separado por comas
             return [origin.strip() for origin in self.CORS_ORIGINS.split(",")]
-        return self.CORS_ORIGINS
+
+        # Fallback a una lista vacía si el tipo no es manejado
+        return []
 
 # Instancia global de configuración
 settings = Settings()

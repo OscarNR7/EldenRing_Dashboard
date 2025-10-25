@@ -26,11 +26,13 @@ class MongoDB:
                 
                 cls.client = MongoClient(
                     settings.MONGO_URI,
-                    serverSelectionTimeoutMS=5000,  # Timeout de 5 segundos (Atlas puede tardar más) - cambiar a 10000 en producción si es necesario
+                    # Aumentamos el timeout para dar margen a los cold starts de Render (Free tier)
+                    serverSelectionTimeoutMS=30000, 
                     connectTimeoutMS=20000,
                     socketTimeoutMS=20000,
-                    maxPoolSize=50,
-                    minPoolSize=10,
+                    # Ajustamos el pool de conexiones para el plan Free de Render
+                    maxPoolSize=20,
+                    minPoolSize=5,
                     retryWrites=True,
                     w='majority'
                 )

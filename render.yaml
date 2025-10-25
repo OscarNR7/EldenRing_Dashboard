@@ -1,0 +1,29 @@
+services:
+  - type: web
+    name: elden-ring-backend
+    env: python
+    region: oregon
+    plan: free
+    buildCommand: "pip install -r requirements.txt"
+    startCommand: "uvicorn app.main:app --host 0.0.0.0 --port $PORT"
+    healthCheckPath: "/api/v1/health"
+    envVars:
+      - key: MONGO_URI
+        sync: false
+      - key: CORS_ORIGINS
+        sync: false
+      - key: ENVIRONMENT
+        value: "production"
+      - key: LOG_LEVEL
+        value: "info"
+    build:
+      - "cd backend"
+  - type: web
+    name: elden-ring-frontend
+    env: static
+    region: oregon
+    plan: free
+    buildCommand: "npm install && npm run build"
+    staticPublishPath: "./dist"
+    build:
+      - "cd frontend"
